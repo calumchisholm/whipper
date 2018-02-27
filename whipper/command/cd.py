@@ -197,6 +197,7 @@ class _CD(BaseCommand):
 
 
 class Info(_CD):
+    config_section = "whipper.cd.info"
     summary = "retrieve information about the currently inserted CD"
     description = ("Display MusicBrainz, CDDB/FreeDB, and AccurateRip"
                    "information for the currently inserted CD.")
@@ -214,6 +215,7 @@ class Info(_CD):
 
 
 class Rip(_CD):
+    config_section = "whipper.cd.rip"
     summary = "rip CD"
     # see whipper.common.program.Program.getPath for expansion
     description = """
@@ -233,12 +235,15 @@ Log files will log the path to tracks relative to this directory.
     # Requires opts.device
 
     def add_arguments(self):
+        self.config = config.Config()
+#        section_name="whipper.cd.rip"
+
         loggers = result.getLoggers().keys()
         default_offset = None
         info = drive.getDeviceInfo(self.opts.device)
         if info:
             try:
-                default_offset = config.Config().getReadOffset(*info)
+                default_offset = self.config.getReadOffset(*info)
                 sys.stdout.write("Using configured read offset %d\n" %
                                  default_offset)
             except KeyError:
@@ -246,16 +251,16 @@ Log files will log the path to tracks relative to this directory.
 
         _CD.add_arguments(self.parser)
 
-        self.parser.add_argument('-L', '--logger',
-                                 action="store", dest="logger",
-                                 default='whipper',
-                                 help="logger to use (choose from '"
-                                 "', '".join(loggers) + "')")
-        # FIXME: get from config
+        self.add_argument_and_config('-L', '--logger',
+                                     action="store", dest="logger",
+                                     default='whipper',
+                                     help="logger to use (choose from '"
+                                     "', '".join(loggers) + "')")
         self.parser.add_argument('-o', '--offset',
                                  action="store", dest="offset",
                                  default=default_offset,
                                  help="sample read offset")
+        # TODO: Should this setting have a config setting under [drive:]?
         self.parser.add_argument('-x', '--force-overread',
                                  action="store_true", dest="overread",
                                  default=False,
@@ -264,34 +269,34 @@ Log files will log the path to tracks relative to this directory.
                                  "if the patched cdparanoia package is "
                                  "installed and the drive "
                                  "supports this feature. ")
-        self.parser.add_argument('-O', '--output-directory',
-                                 action="store", dest="output_directory",
-                                 default=os.path.relpath(os.getcwd()),
-                                 help="output directory; will be included "
-                                 "in file paths in log")
-        self.parser.add_argument('-W', '--working-directory',
-                                 action="store", dest="working_directory",
-                                 help="working directory; whipper will "
-                                 "change to this directory "
-                                 "and files will be created relative to "
-                                 "it when not absolute")
-        self.parser.add_argument('--track-template',
-                                 action="store", dest="track_template",
-                                 default=DEFAULT_TRACK_TEMPLATE,
-                                 help="template for track file naming")
-        self.parser.add_argument('--disc-template',
-                                 action="store", dest="disc_template",
-                                 default=DEFAULT_DISC_TEMPLATE,
-                                 help="template for disc file naming")
-        self.parser.add_argument('-U', '--unknown',
-                                 action="store_true", dest="unknown",
-                                 help="whether to continue ripping if "
-                                 "the CD is unknown", default=False)
-        self.parser.add_argument('--cdr',
-                                 action="store_true", dest="cdr",
-                                 help="whether to continue ripping if "
-                                 "the disc is a CD-R",
-                                 default=False)
+        self.add_argument_and_config('-O', '--output-directory',
+                                     action="store", dest="output_directory",
+                                     default=os.path.relpath(os.getcwd()),
+                                     help="output directory; will be included "
+                                     "in file paths in log")
+        self.add_argument_and_config('-W', '--working-directory',
+                                     action="store", dest="working_directory",
+                                     help="working directory; whipper will "
+                                     "change to this directory "
+                                     "and files will be created relative to "
+                                     "it when not absolute")
+        self.add_argument_and_config('--track-template',
+                                     action="store", dest="track_template",
+                                     default=DEFAULT_TRACK_TEMPLATE,
+                                     help="template for track file naming")
+        self.add_argument_and_config('--disc-template',
+                                     action="store", dest="disc_template",
+                                     default=DEFAULT_DISC_TEMPLATE,
+                                     help="template for disc file naming")
+        self.add_argument_and_config('-U', '--unknown',
+                                     action="store_true", dest="unknown",
+                                     help="whether to continue ripping if "
+                                     "the CD is unknown", default=False)
+        self.add_argument_and_config('--cdr',
+                                     action="store_true", dest="cdr",
+                                     help="whether to continue ripping if "
+                                     "the disc is a CD-R",
+                                     default=False)
 
     def handle_arguments(self):
         self.options.output_directory = os.path.expanduser(

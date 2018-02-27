@@ -67,6 +67,10 @@ class Config:
         except (ConfigParser.NoSectionError, ConfigParser.NoOptionError):
             return None
 
+    def getter_or_default(self, suffix, section, option, default):
+        value = self._getter(suffix, section, option)
+        return default if (value is None) else value
+
     def get(self, section, option):
         return self._getter('', section, option)
 

@@ -5,7 +5,9 @@ import argparse
 import os
 import sys
 
-from whipper.common import drive
+from whipper.common import (
+    drive, config
+)
 
 import logging
 logger = logging.getLogger(__name__)
@@ -49,6 +51,8 @@ class BaseCommand():
     device_option = False
     no_add_help = False  # for rip.main.Whipper
     formatter_class = argparse.RawDescriptionHelpFormatter
+    config = config.Config()
+    config_section = None
 
     def __init__(self, argv, prog_name, opts):
         self.opts = opts  # for Rip.add_arguments()
@@ -128,3 +132,53 @@ class BaseCommand():
         for com in sorted(self.subcommands.keys()):
             s += "  %s %s\n" % (com.ljust(8), self.subcommands[com].summary)
         return s
+
+    # Wrapper around ArgumentParser.add_argument to add config file support.
+    # We prioritise these settings in the following order:
+    # command-line arg. > config file setting > default value (in code)
+    def add_argument_and_config(self, *args, **kwargs):
+        section = None
+        if ("section" in kwargs):
+            # Section name argument was passed.
+            section = kwargs["section"]
+            kwargs.pop("section")
+        else:
+            # Use the current sub-command's default config section name.
+            if (self.config_section is None):
+                section = "main"
+            else:
+                section = self.config_section
+
+        # Don't pass the default value to the argument parser.
+        # Use it only if the config value isn't found.
+        default = None
+        if ("default" in kwargs):
+            default = kwargs["default"]
+            kwargs.pop("default")
+
+        # We use the same key to identify both the argument destination
+        # and the config file key.
+        key = None
+        if ("dest" in kwargs):
+            key = kwargs["dest"]
+        else:
+            raise SyntaxError("parser requires a 'dest' argument")
+
+        # Defaults to string if not specified.
+        typesuffix = ''
+        if ("type" in kwargs):
+            if kwargs["type"] in (int, float):
+                typesuffix = kwargs["type"].__name__
+            else if kwargs["type"] = bool:
+                typesuffix = "boolean"
+
+        # Add the argument.
+        # We have 2 levels of default value. When an option is not set on the
+        # command line, we default to using the value from the config file. If
+        # that doesn't exist, we use the default as passed by the caller.
+        self.parser.add_argument(default=self.config.getter_or_default(
+                                 typesuffix,
+                                 section,
+                                 key,
+                                 default),
+                                 *args, **kwargs)
